@@ -1,5 +1,3 @@
-// Los modelos de dominio se agregan en el Hito 1.
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -7,4 +5,123 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+}
+
+// Restricciones que Prisma no modela (ver migraciones SQL manuales):
+// - cita: EXCLUDE por cuadrilla y rango [inicio, fin) para impedir solapes; CHECK fin > inicio.
+// - cuadrilla: CHECK capacidad_diaria > 0; trigger que limita a 2 instaladores.
+// - disponibilidad_cuadrilla, tipo_servicio: CHECK de rangos válidos.
+
+model Ciudad {
+  id           Int                 @id @default(autoincrement())
+  nombre       String              @unique
+  contratistas ContratistaCiudad[]
+  ventas       Venta[]
+
+  @@map("ciudad")
+}
+
+model Contratista {
+  id         Int                 @id @default(autoincrement())
+  nombre     String              @unique
+  ciudades   ContratistaCiudad[]
+  cuadrillas Cuadrilla[]
+
+  @@map("contratista")
+}
+
+model ContratistaCiudad {
+  contratistaId Int         @map("contratista_id")
+  ciudadId      Int         @map("ciudad_id")
+  contratista   Contratista @relation(fields: [contratistaId], references: [id], onDelete: Cascade)
+  ciudad        Ciudad      @relation(fields: [ciudadId], references: [id], onDelete: Cascade)
+
+  @@id([contratistaId, ciudadId])
+  @@index([ciudadId])
+  @@map("contratista_ciudad")
+}
+
+model Cuadrilla {
+  id               Int                       @id @default(autoincrement())
+  nombre           String
+  contratistaId    Int                       @map("contratista_id")
+  // Máximo de citas que la cuadrilla atiende en un mismo día.
+  capacidadDiaria  Int                       @map("capacidad_diaria")
+  contratista      Contratista               @relation(fields: [contratistaId], references: [id], onDelete: Cascade)
+  instaladores     Instalador[]
+  disponibilidades DisponibilidadCuadrilla[]
+  citas            Cita[]
+
+  @@unique([contratistaId, nombre])
+  @@map("cuadrilla")
+}
+
+model Instalador {
+  id          Int       @id @default(autoincrement())
+  nombre      String
+  cuadrillaId Int       @map("cuadrilla_id")
+  cuadrilla   Cuadrilla @relation(fields: [cuadrillaId], references: [id], onDelete: Cascade)
+
+  @@index([cuadrillaId])
+  @@map("instalador")
+}
+
+// Bloque semanal de trabajo, en hora local de negocio (America/Bogota).
+model DisponibilidadCuadrilla {
+  id           Int       @id @default(autoincrement())
+  cuadrillaId  Int       @map("cuadrilla_id")
+  // 0 = domingo … 6 = sábado
+  diaSemana    Int       @map("dia_semana")
+  // Minutos desde la medianoche local; el bloque es [minutoInicio, minutoFin).
+  minutoInicio Int       @map("minuto_inicio")
+  minutoFin    Int       @map("minuto_fin")
+  cuadrilla    Cuadrilla @relation(fields: [cuadrillaId], references: [id], onDelete: Cascade)
+
+  @@index([cuadrillaId, diaSemana])
+  @@map("disponibilidad_cuadrilla")
+}
+
+model TipoServicio {
+  id          Int     @id @default(autoincrement())
+  nombre      String  @unique
+  duracionMin Int     @map("duracion_min")
+  ventas      Venta[]
+
+  @@map("tipo_servicio")
+}
+
+enum EstadoVenta {
+  ABIERTA
+  // Cerrada pero sin cupo en el horizonte: queda pendiente de agenda.
+  CERRADA
+  AGENDADA
+
+  @@map("estado_venta")
+}
+
+model Venta {
+  id             Int          @id @default(autoincrement())
+  ciudadId       Int          @map("ciudad_id")
+  tipoServicioId Int          @map("tipo_servicio_id")
+  estado         EstadoVenta  @default(ABIERTA)
+  creadaEn       DateTime     @default(now()) @map("creada_en") @db.Timestamptz(3)
+  ciudad         Ciudad       @relation(fields: [ciudadId], references: [id])
+  tipoServicio   TipoServicio @relation(fields: [tipoServicioId], references: [id])
+  cita           Cita?
+
+  @@map("venta")
+}
+
+model Cita {
+  id          Int       @id @default(autoincrement())
+  ventaId     Int       @unique @map("venta_id")
+  cuadrillaId Int       @map("cuadrilla_id")
+  inicio      DateTime  @db.Timestamptz(3)
+  fin         DateTime  @db.Timestamptz(3)
+  creadaEn    DateTime  @default(now()) @map("creada_en") @db.Timestamptz(3)
+  venta       Venta     @relation(fields: [ventaId], references: [id], onDelete: Cascade)
+  cuadrilla   Cuadrilla @relation(fields: [cuadrillaId], references: [id], onDelete: Cascade)
+
+  @@index([cuadrillaId, inicio])
+  @@map("cita")
 }
