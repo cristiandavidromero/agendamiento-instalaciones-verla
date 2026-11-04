@@ -1,42 +1,194 @@
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --fondo: #f6f7f9;
+  --superficie: #ffffff;
+  --texto: #1b1f24;
+  --texto-suave: #5b6470;
+  --borde: #dfe3e8;
+  --acento: #1f6feb;
+  --acento-texto: #ffffff;
+  --exito-fondo: #e9f7ef;
+  --exito-borde: #9fd8b5;
+  --aviso-fondo: #fff4e5;
+  --aviso-borde: #f5c97a;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --fondo: #0f1215;
+    --superficie: #181c21;
+    --texto: #e7eaee;
+    --texto-suave: #9aa4b0;
+    --borde: #2b3138;
+    --acento: #4c8dff;
+    --acento-texto: #0b0d10;
+    --exito-fondo: #12281c;
+    --exito-borde: #2f6b47;
+    --aviso-fondo: #2b2111;
+    --aviso-borde: #7a5a1f;
   }
-}
 
-html,
-body {
-  max-width: 100vw;
-  overflow-x: hidden;
-}
-
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  html {
+    color-scheme: dark;
+  }
 }
 
 * {
   box-sizing: border-box;
-  padding: 0;
   margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--fondo);
+  color: var(--texto);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  line-height: 1.5;
 }
 
 a {
-  color: inherit;
-  text-decoration: none;
+  color: var(--acento);
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
+.encabezado {
+  background: var(--superficie);
+  border-bottom: 1px solid var(--borde);
+}
+
+.encabezado nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.25rem;
+  align-items: center;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0.75rem 1rem;
+}
+
+.encabezado a {
+  white-space: nowrap;
+}
+
+.encabezado .marca {
+  font-weight: 600;
+  color: var(--texto);
+  text-decoration: none;
+  margin-right: auto;
+}
+
+.contenido {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+  display: grid;
+  gap: 1.25rem;
+}
+
+h1 {
+  font-size: 1.5rem;
+}
+
+h2 {
+  font-size: 1.1rem;
+}
+
+.suave {
+  color: var(--texto-suave);
+}
+
+.tarjeta {
+  background: var(--superficie);
+  border: 1px solid var(--borde);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+}
+
+.formulario {
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  align-items: end;
+}
+
+label {
+  display: grid;
+  gap: 0.3rem;
+  font-size: 0.9rem;
+  color: var(--texto-suave);
+}
+
+select,
+button {
+  font: inherit;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--borde);
+  background: var(--superficie);
+  color: var(--texto);
+}
+
+button {
+  background: var(--acento);
+  border-color: var(--acento);
+  color: var(--acento-texto);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.resultados {
+  list-style: none;
+  display: grid;
+  gap: 0.6rem;
+}
+
+.resultado {
+  border-radius: 10px;
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--exito-borde);
+  background: var(--exito-fondo);
+}
+
+.resultado.sin-cupo,
+.error {
+  border-color: var(--aviso-borde);
+  background: var(--aviso-fondo);
+}
+
+.error {
+  border: 1px solid var(--aviso-borde);
+  border-radius: 10px;
+  padding: 0.8rem 1rem;
+}
+
+.agenda {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.agenda h3 {
+  font-size: 0.9rem;
+  margin-top: 0.75rem;
+}
+
+.agenda ul {
+  list-style: none;
+  display: grid;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
+.agenda li {
+  display: flex;
+  gap: 0.6rem;
+  font-size: 0.95rem;
+}
+
+.agenda li time {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
