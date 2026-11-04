@@ -51,6 +51,8 @@ model Cuadrilla {
   instaladores     Instalador[]
   disponibilidades DisponibilidadCuadrilla[]
   citas            Cita[]
+  historialSalida  HistorialCita[]           @relation("HistorialCuadrillaAnterior")
+  historialEntrada HistorialCita[]           @relation("HistorialCuadrillaNueva")
 
   @@unique([contratistaId, nombre])
   @@map("cuadrilla")
@@ -100,14 +102,15 @@ enum EstadoVenta {
 }
 
 model Venta {
-  id             Int          @id @default(autoincrement())
-  ciudadId       Int          @map("ciudad_id")
-  tipoServicioId Int          @map("tipo_servicio_id")
-  estado         EstadoVenta  @default(ABIERTA)
-  creadaEn       DateTime     @default(now()) @map("creada_en") @db.Timestamptz(3)
-  ciudad         Ciudad       @relation(fields: [ciudadId], references: [id])
-  tipoServicio   TipoServicio @relation(fields: [tipoServicioId], references: [id])
+  id             Int             @id @default(autoincrement())
+  ciudadId       Int             @map("ciudad_id")
+  tipoServicioId Int             @map("tipo_servicio_id")
+  estado         EstadoVenta     @default(ABIERTA)
+  creadaEn       DateTime        @default(now()) @map("creada_en") @db.Timestamptz(3)
+  ciudad         Ciudad          @relation(fields: [ciudadId], references: [id])
+  tipoServicio   TipoServicio    @relation(fields: [tipoServicioId], references: [id])
   cita           Cita?
+  historial      HistorialCita[]
 
   @@map("venta")
 }
@@ -124,4 +127,39 @@ model Cita {
 
   @@index([cuadrillaId, inicio])
   @@map("cita")
+}
+
+enum AccionCita {
+  CREADA
+  MOVIDA // otra franja en la misma cuadrilla
+  REASIGNADA // otra cuadrilla
+  LIBERADA // la cita se elimina y la venta vuelve a quedar pendiente
+
+  @@map("accion_cita")
+}
+
+// Trazabilidad: un registro inmutable por cada cambio de una cita.
+// No referencia la cita con FK porque una cita liberada se elimina; el historial queda.
+model HistorialCita {
+  id                  Int        @id @default(autoincrement())
+  ventaId             Int        @map("venta_id")
+  citaId              Int        @map("cita_id")
+  accion              AccionCita
+  cuadrillaAnteriorId Int?       @map("cuadrilla_anterior_id")
+  inicioAnterior      DateTime?  @map("inicio_anterior") @db.Timestamptz(3)
+  finAnterior         DateTime?  @map("fin_anterior") @db.Timestamptz(3)
+  cuadrillaNuevaId    Int?       @map("cuadrilla_nueva_id")
+  inicioNuevo         DateTime?  @map("inicio_nuevo") @db.Timestamptz(3)
+  finNuevo            DateTime?  @map("fin_nuevo") @db.Timestamptz(3)
+  // Quién hizo el cambio: "sistema" para el agendamiento automático.
+  actor               String
+  motivo              String?
+  creadoEn            DateTime   @default(now()) @map("creado_en") @db.Timestamptz(3)
+  venta               Venta      @relation(fields: [ventaId], references: [id], onDelete: Cascade)
+  cuadrillaAnterior   Cuadrilla? @relation("HistorialCuadrillaAnterior", fields: [cuadrillaAnteriorId], references: [id], onDelete: SetNull)
+  cuadrillaNueva      Cuadrilla? @relation("HistorialCuadrillaNueva", fields: [cuadrillaNuevaId], references: [id], onDelete: SetNull)
+
+  @@index([ventaId, creadoEn])
+  @@index([creadoEn])
+  @@map("historial_cita")
 }

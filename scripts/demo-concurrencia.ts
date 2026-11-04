@@ -27,7 +27,7 @@ async function main() {
 
   async function prepararEscenario() {
     await prisma.$executeRawUnsafe(`
-      TRUNCATE cita, venta, tipo_servicio, disponibilidad_cuadrilla, instalador,
+      TRUNCATE historial_cita, cita, venta, tipo_servicio, disponibilidad_cuadrilla, instalador,
                cuadrilla, contratista_ciudad, contratista, ciudad
       RESTART IDENTITY CASCADE`);
     const ciudad = await prisma.ciudad.create({ data: { nombre: "Bogotá" } });

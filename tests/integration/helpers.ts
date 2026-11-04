@@ -4,7 +4,7 @@ import type { BloqueSemanal } from "@/dominio/disponibilidad";
 // Vacía todas las tablas de dominio entre pruebas.
 export async function limpiarBD() {
   await prisma.$executeRawUnsafe(`
-    TRUNCATE cita, venta, tipo_servicio, disponibilidad_cuadrilla, instalador,
+    TRUNCATE historial_cita, cita, venta, tipo_servicio, disponibilidad_cuadrilla, instalador,
              cuadrilla, contratista_ciudad, contratista, ciudad
     RESTART IDENTITY CASCADE
   `);

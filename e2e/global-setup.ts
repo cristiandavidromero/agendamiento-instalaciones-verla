@@ -18,7 +18,7 @@ export default async function setup() {
   const prisma = new PrismaClient({ datasourceUrl: url });
   try {
     await prisma.$executeRawUnsafe(`
-      TRUNCATE cita, venta, tipo_servicio, disponibilidad_cuadrilla, instalador,
+      TRUNCATE historial_cita, cita, venta, tipo_servicio, disponibilidad_cuadrilla, instalador,
                cuadrilla, contratista_ciudad, contratista, ciudad
       RESTART IDENTITY CASCADE
     `);

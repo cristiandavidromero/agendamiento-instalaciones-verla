@@ -20,6 +20,9 @@ export interface OpcionesAgenda {
   bloquearCuadrilla?: boolean;
 }
 
+// Actor registrado en el historial cuando la cita la crea el agendamiento automático.
+export const ACTOR_SISTEMA = "sistema";
+
 export class VentaNoEncontradaError extends Error {
   constructor(ventaId: number) {
     super(`La venta ${ventaId} no existe`);
@@ -117,6 +120,17 @@ async function reservarFranja(
         data: { ventaId, cuadrillaId: franja.cuadrillaId, inicio: franja.inicio, fin: franja.fin },
       });
       await tx.venta.update({ where: { id: ventaId }, data: { estado: "AGENDADA" } });
+      await tx.historialCita.create({
+        data: {
+          ventaId,
+          citaId: cita.id,
+          accion: "CREADA",
+          cuadrillaNuevaId: cita.cuadrillaId,
+          inicioNuevo: cita.inicio,
+          finNuevo: cita.fin,
+          actor: ACTOR_SISTEMA,
+        },
+      });
       return cita;
     },
     { maxWait: 10_000, timeout: 10_000 },

@@ -47,7 +47,7 @@ const TIPOS_SERVICIO = [
 async function main() {
   // El seed es idempotente: reinicia las tablas de dominio.
   await prisma.$executeRawUnsafe(`
-    TRUNCATE cita, venta, tipo_servicio, disponibilidad_cuadrilla, instalador,
+    TRUNCATE historial_cita, cita, venta, tipo_servicio, disponibilidad_cuadrilla, instalador,
              cuadrilla, contratista_ciudad, contratista, ciudad
     RESTART IDENTITY CASCADE
   `);
