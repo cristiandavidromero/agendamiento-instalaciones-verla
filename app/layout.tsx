@@ -22,6 +22,7 @@ export default function RootLayout({
             </Link>
             <Link href="/">Cerrar venta</Link>
             <Link href="/agenda">Agenda</Link>
+            <Link href="/admin">Administración</Link>
           </nav>
         </header>
         <main className="contenido">{children}</main>

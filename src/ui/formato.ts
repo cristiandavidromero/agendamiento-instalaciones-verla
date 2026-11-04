@@ -16,7 +16,20 @@ const hora = new Intl.DateTimeFormat("es-CO", {
   hourCycle: "h23",
 });
 
+const diaCorto = new Intl.DateTimeFormat("es-CO", {
+  timeZone: ZONA_NEGOCIO,
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+});
+
 const aFecha = (valor: Date | string) => (typeof valor === "string" ? new Date(valor) : valor);
+
+// "jue, 5 nov"
+export const formatoDiaCorto = (valor: Date | string) => diaCorto.format(aFecha(valor)).replace(/\./g, "");
+
+// "jue, 5 nov · 08:30"
+export const formatoFechaHora = (valor: Date | string) => `${formatoDiaCorto(valor)} · ${formatoHora(valor)}`;
 
 // "Jueves, 5 de noviembre"
 export const formatoDia = (valor: Date | string) => {

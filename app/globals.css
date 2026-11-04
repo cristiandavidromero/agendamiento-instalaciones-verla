@@ -192,3 +192,87 @@ button:disabled {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
+
+input {
+  font: inherit;
+  padding: 0.55rem 0.7rem;
+  border-radius: 8px;
+  border: 1px solid var(--borde);
+  background: var(--superficie);
+  color: var(--texto);
+}
+
+button.secundario {
+  background: transparent;
+  color: var(--acento);
+  border-color: var(--borde);
+  font-weight: 500;
+}
+
+button.peligro {
+  background: #c93c37;
+  border-color: #c93c37;
+  color: #ffffff;
+}
+
+.citas-admin,
+.historial {
+  list-style: none;
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.citas-admin > li {
+  border-top: 1px solid var(--borde);
+  padding-top: 0.5rem;
+}
+
+.citas-admin > li:first-child {
+  border-top: none;
+}
+
+.fila-cita {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(160px, 1.2fr) minmax(170px, 1.2fr) auto;
+  gap: 0.5rem 1rem;
+  align-items: center;
+}
+
+.fila-cita .cuando {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.acciones button {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.9rem;
+}
+
+.editor {
+  margin-top: 0.6rem;
+  padding: 0.75rem;
+  border: 1px dashed var(--borde);
+  border-radius: 8px;
+}
+
+.historial li {
+  display: grid;
+  grid-template-columns: 9.5rem 1fr;
+  gap: 0.75rem;
+  font-size: 0.95rem;
+}
+
+@media (max-width: 720px) {
+  .fila-cita,
+  .historial li {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+  }
+}
