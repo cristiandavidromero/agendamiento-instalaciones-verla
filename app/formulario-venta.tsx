@@ -93,7 +93,7 @@ export function FormularioVenta({
             ))}
           </select>
         </label>
-        <button type="submit" disabled={enviando}>
+        <button type="submit" disabled={enviando} aria-busy={enviando}>
           {enviando ? "Agendando…" : "Cerrar venta y agendar"}
         </button>
       </form>

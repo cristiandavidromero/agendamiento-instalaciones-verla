@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { formatoDiaCorto, formatoFechaHora, formatoHora } from "@/ui/formato";
 
 const CLAVE_RESPONSABLE = "agenda.responsable";
+const MOTIVO_DESACTIVADO = "Escribe primero el responsable del cambio";
 
 export interface CitaAdmin {
   id: number;
@@ -136,7 +137,14 @@ export function BandejaAdmin({
             onChange={(e) => cambiarResponsable(e.target.value)}
             placeholder="Tu nombre"
             maxLength={80}
+            className={sinResponsable ? "falta" : undefined}
+            aria-describedby="aviso-responsable"
           />
+          {sinResponsable && (
+            <span id="aviso-responsable" className="aviso-campo">
+              Escríbelo para habilitar Mover, Reasignar y Liberar.
+            </span>
+          )}
         </label>
         <label>
           Ciudad
@@ -157,7 +165,7 @@ export function BandejaAdmin({
 
       <section className="tarjeta" aria-label="Próximas citas">
         <h2>Próximas citas</h2>
-        {sinResponsable && <p className="suave">Escribe el responsable para habilitar los cambios.</p>}
+        {sinResponsable && <p className="aviso-campo">Escribe arriba el responsable del cambio para habilitar los botones.</p>}
         {visibles.length === 0 ? (
           <p className="suave">No hay citas próximas.</p>
         ) : (
@@ -178,13 +186,22 @@ export function BandejaAdmin({
                       Venta #{cita.ventaId} · {cita.servicio}
                     </span>
                     <span className="acciones">
-                      <button type="button" className="secundario" disabled={sinResponsable || ocupado} onClick={() => abrirMover(cita)}>
+                      <button
+                        type="button"
+                        className="secundario"
+                        disabled={sinResponsable || ocupado}
+                        aria-busy={ocupado}
+                        title={sinResponsable ? MOTIVO_DESACTIVADO : undefined}
+                        onClick={() => abrirMover(cita)}
+                      >
                         Mover o reasignar
                       </button>
                       <button
                         type="button"
                         className="secundario"
                         disabled={sinResponsable || ocupado}
+                        aria-busy={ocupado}
+                        title={sinResponsable ? MOTIVO_DESACTIVADO : undefined}
                         onClick={() => setEdicion({ modo: "liberar", citaId: cita.id, motivo: "" })}
                       >
                         Liberar
@@ -233,7 +250,7 @@ export function BandejaAdmin({
                             <input value={abierta.motivo} onChange={(e) => setEdicion({ ...abierta, motivo: e.target.value })} maxLength={280} />
                           </label>
                           <span className="acciones">
-                            <button type="button" disabled={!abierta.inicio || ocupado} onClick={() => guardarMovimiento(cita, abierta)}>
+                            <button type="button" disabled={!abierta.inicio || ocupado} aria-busy={ocupado} onClick={() => guardarMovimiento(cita, abierta)}>
                               Guardar cambio
                             </button>
                             <button type="button" className="secundario" onClick={() => setEdicion(null)}>
@@ -252,7 +269,7 @@ export function BandejaAdmin({
                         <input value={abierta.motivo} onChange={(e) => setEdicion({ ...abierta, motivo: e.target.value })} maxLength={280} />
                       </label>
                       <span className="acciones">
-                        <button type="button" className="peligro" disabled={ocupado} onClick={() => confirmarLiberacion(cita, abierta)}>
+                        <button type="button" className="peligro" disabled={ocupado} aria-busy={ocupado} onClick={() => confirmarLiberacion(cita, abierta)}>
                           Confirmar liberación
                         </button>
                         <button type="button" className="secundario" onClick={() => setEdicion(null)}>
@@ -283,7 +300,7 @@ export function BandejaAdmin({
                   <span>{venta.ciudad}</span>
                   <span className="suave">{venta.servicio}</span>
                   <span className="acciones">
-                    <button type="button" className="secundario" disabled={ocupado} onClick={() => agendar(venta)}>
+                    <button type="button" className="secundario" disabled={ocupado} aria-busy={ocupado} onClick={() => agendar(venta)}>
                       Agendar en la franja más próxima
                     </button>
                   </span>

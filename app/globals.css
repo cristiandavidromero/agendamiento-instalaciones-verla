@@ -10,6 +10,7 @@
   --exito-borde: #9fd8b5;
   --aviso-fondo: #fff4e5;
   --aviso-borde: #f5c97a;
+  --aviso-texto: #b23a0b;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -25,6 +26,7 @@
     --exito-borde: #2f6b47;
     --aviso-fondo: #2b2111;
     --aviso-borde: #7a5a1f;
+    --aviso-texto: #f5a35c;
   }
 
   html {
@@ -136,7 +138,22 @@ button {
 
 button:disabled {
   opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Solo mientras algo se está guardando de verdad. */
+button[aria-busy="true"] {
   cursor: progress;
+}
+
+.falta {
+  border-color: var(--aviso-texto);
+  box-shadow: 0 0 0 3px rgba(194, 65, 12, 0.18);
+}
+
+.aviso-campo {
+  color: var(--aviso-texto);
+  font-size: 0.85rem;
 }
 
 .resultados {
