@@ -19,6 +19,7 @@ npm run dev            # http://localhost:3000
 
 - `/` — cerrar una venta (ciudad + tipo de servicio) y ver la cita asignada.
 - `/agenda` — agenda de cada cuadrilla agrupada por día.
+- `/admin` — bandeja de administración: mover, reasignar y liberar citas, agendar ventas pendientes e historial de cambios.
 
 ## Scripts
 
@@ -49,6 +50,7 @@ cerrar venta ──▶ buscarCandidatas ──▶ calcularCandidatas (puro) ─�
 - **Tipo de servicio**: define la duración de la instalación.
 - **Venta**: `ABIERTA` → `AGENDADA`, o `CERRADA` si no hubo cupo (queda pendiente de agenda).
 - **Cita**: una por venta, en un rango `[inicio, fin)`.
+- **Historial de cita**: registro inmutable de cada cambio (`CREADA`, `MOVIDA`, `REASIGNADA`, `LIBERADA`) con cuadrilla y horario antes y después, responsable y motivo.
 
 ### Motor de disponibilidad — [`src/dominio/disponibilidad.ts`](src/dominio/disponibilidad.ts)
 
@@ -80,6 +82,15 @@ ALTER TABLE cita ADD CONSTRAINT cita_sin_solapamiento
 
 Aunque el código fallara, PostgreSQL nunca acepta dos citas cruzadas de la misma cuadrilla.
 
+### Administración con trazabilidad — [`src/servicios/administrar.ts`](src/servicios/administrar.ts)
+
+- **Mover** (otra franja, misma cuadrilla) y **reasignar** (otra cuadrilla de la ciudad) usan la misma defensa que la reserva automática: se bloquean la cita y la cuadrilla destino con `FOR UPDATE`, la franja se valida con el motor de disponibilidad (sin contar la propia cita) y la restricción de la BD sigue como red de seguridad. Una cita puede moverse media hora aunque se solape con su propio horario, y moverse dentro del mismo día aunque la cuadrilla esté en su capacidad.
+- **Liberar** elimina la cita y la venta vuelve a `CERRADA` (pendiente). Desde la bandeja se puede reagendar en la franja más próxima.
+- Cada cambio exige un **responsable** y deja un registro en `historial_cita` en la misma transacción. El agendamiento automático registra `CREADA` con actor `sistema`. El historial no tiene FK a la cita, así que sobrevive a las citas liberadas.
+- Prueba de concurrencia propia: 10 movimientos simultáneos al mismo cupo, solo 1 lo obtiene.
+
+No hay autenticación: el responsable se escribe en la bandeja, que lo recuerda en el navegador. En producción vendría de la sesión del usuario.
+
 ### La prueba de concurrencia — [`tests/integration/concurrencia.test.ts`](tests/integration/concurrencia.test.ts)
 
 20 ventas calculan sus candidatas a la vez (todas ven el mismo único cupo) y luego reservan en paralelo contra PostgreSQL real:
@@ -107,6 +118,11 @@ Otro caso de la suite agenda 20 ventas sobre 3 cuadrillas y verifica 0 cruces y 
 | `POST /api/ventas/:id/cerrar` | `200 { estado: "AGENDADA", cita }` (con cuadrilla) · `409 SIN_CUPO` · `404` |
 | `GET /api/ventas/:id` | Venta con ciudad, tipo de servicio y cita · `404` |
 | `GET /api/cuadrillas/:id/citas` | Citas de la cuadrilla en orden cronológico · `404` |
+| `GET /api/citas/:id/opciones` | Cuadrillas de la ciudad y franjas libres para mover o reasignar |
+| `POST /api/citas/:id/reprogramar` `{ cuadrillaId, inicio, actor, motivo? }` | `200` cita actualizada · `409 FRANJA_NO_DISPONIBLE` · `422 CUADRILLA_FUERA_DE_CIUDAD` · `404` |
+| `POST /api/citas/:id/liberar` `{ actor, motivo? }` | `200` venta pendiente (`CERRADA`) · `404` |
+
+`GET /api/ventas/:id` incluye además el historial de la venta.
 
 Los errores siguen el formato `{ "error": { "codigo", "mensaje", "detalles?" } }`.
 
@@ -124,6 +140,7 @@ Los errores siguen el formato `{ "error": { "codigo", "mensaje", "detalles?" } }
 app/                      páginas (/ y /agenda) y rutas de la API
 src/dominio/              lógica pura: disponibilidad, tiempo local, reglas de cuadrilla
 src/servicios/agendar.ts  búsqueda de candidatas y reserva exclusiva
+src/servicios/administrar.ts  mover, reasignar y liberar citas con historial
 src/api/                  validación (Zod) y formato de errores
 prisma/                   esquema, migraciones (incluye SQL manual) y seed
 tests/unit, tests/integration, e2e/

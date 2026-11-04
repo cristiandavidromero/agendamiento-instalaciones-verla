@@ -21,7 +21,8 @@ Prueba técnica: **agendamiento automático de instalaciones**. Cuando se cierra
 ## Notas de implementación
 
 - Versiones fijadas: Prisma 6.16 (no 7), Zod 4, Next 15. npm 12 bloquea scripts de instalación: los permitidos están en `allowScripts` de `package.json`.
-- La lógica del motor vive en `src/dominio/` (pura); la reserva en `src/servicios/agendar.ts`.
+- La lógica del motor vive en `src/dominio/` (pura); la reserva en `src/servicios/agendar.ts` y la administración (mover, reasignar, liberar) en `src/servicios/administrar.ts`.
+- Todo cambio de una cita (automático o administrativo) registra una fila en `historial_cita` dentro de la misma transacción, con responsable (`actor`). Mover y reasignar deben bloquear la cuadrilla destino y validar con el motor, igual que la reserva.
 - Restricciones que Prisma no modela (EXCLUDE, CHECK, trigger de instaladores) van en migraciones SQL manuales: crear con `prisma migrate dev --create-only` y editar el SQL.
 - Pruebas de integración: el reloj se inyecta con `{ ahora }` o con `vi.setSystemTime` (solo `Date`).
 
