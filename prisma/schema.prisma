@@ -1,0 +1,10 @@
+// Los modelos de dominio se agregan en el Hito 1.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
