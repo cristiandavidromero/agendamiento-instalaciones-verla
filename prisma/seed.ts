@@ -1,7 +1,22 @@
-import { PrismaClient } from "@prisma/client";
 import { validarInstaladores } from "../src/dominio/cuadrilla";
+import { prisma } from "../src/lib/prisma";
+import { agendarVenta } from "../src/servicios/agendar";
+import { liberarCita, opcionesDeReprogramacion, reprogramarCita } from "../src/servicios/administrar";
 
-const prisma = new PrismaClient();
+// Datos simulados: ventas cerradas desde ahora (pasan por el agendamiento real) y algunos
+// cambios de operaciones para que la agenda y el historial tengan contenido en la demo.
+const VENTAS_SIMULADAS = 40;
+const OPERADORA = "Laura Méndez (operaciones)";
+
+// Generador pseudoaleatorio con semilla fija: el seed produce siempre la misma mezcla de ventas.
+function aleatorio(semilla: number) {
+  return () => {
+    semilla = (semilla + 0x6d2b79f5) | 0;
+    let t = Math.imul(semilla ^ (semilla >>> 15), 1 | semilla);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
 
 const h = (horas: number, minutos = 0) => horas * 60 + minutos;
 
@@ -83,6 +98,57 @@ async function main() {
   console.log(
     `Seed: ${ciudades.size} ciudades, ${CONTRATISTAS.length} contratistas, ` +
       `${CONTRATISTAS.flatMap((c) => c.cuadrillas).length} cuadrillas, ${TIPOS_SERVICIO.length} tipos de servicio`,
+  );
+
+  await simularOperacion([...ciudades.values()]);
+}
+
+async function simularOperacion(ciudadIds: number[]) {
+  const azar = aleatorio(2026);
+  const tipos = await prisma.tipoServicio.findMany({ orderBy: { id: "asc" } });
+
+  // 60 % de las ventas en la primera ciudad (Bogotá), el resto en la segunda.
+  const citas = [];
+  for (let i = 0; i < VENTAS_SIMULADAS; i++) {
+    const venta = await prisma.venta.create({
+      data: {
+        ciudadId: azar() < 0.6 ? ciudadIds[0] : ciudadIds[1],
+        tipoServicioId: tipos[Math.floor(azar() * tipos.length)].id,
+      },
+    });
+    const resultado = await agendarVenta(venta.id);
+    if (resultado.estado === "AGENDADA") citas.push(resultado.cita);
+  }
+
+  // Cambios de operaciones sobre algunas citas: dos movidas, una reasignada y dos liberadas.
+  const cambios = [
+    { cita: citas[3], tipo: "mover", motivo: "El cliente pidió más tarde" },
+    { cita: citas[11], tipo: "mover", motivo: "Acceso al edificio solo en la tarde" },
+    { cita: citas[7], tipo: "reasignar", motivo: "Balancear carga entre cuadrillas" },
+    { cita: citas[15], tipo: "liberar", motivo: "Cliente canceló la instalación" },
+    { cita: citas[22], tipo: "liberar", motivo: "Cliente reprogramará por teléfono" },
+  ] as const;
+  let aplicados = 0;
+  for (const { cita, tipo, motivo } of cambios) {
+    if (!cita) continue;
+    if (tipo === "liberar") {
+      await liberarCita(cita.id, { actor: OPERADORA, motivo });
+    } else {
+      const { franjas } = await opcionesDeReprogramacion(cita.id);
+      const destino =
+        tipo === "mover"
+          ? franjas.filter((f) => f.cuadrillaId === cita.cuadrillaId)[4]
+          : franjas.find((f) => f.cuadrillaId !== cita.cuadrillaId);
+      if (!destino) continue;
+      await reprogramarCita(cita.id, { cuadrillaId: destino.cuadrillaId, inicio: destino.inicio, actor: OPERADORA, motivo });
+    }
+    aplicados++;
+  }
+
+  const pendientes = await prisma.venta.count({ where: { estado: "CERRADA" } });
+  console.log(
+    `Simulación: ${VENTAS_SIMULADAS} ventas, ${await prisma.cita.count()} citas agendadas, ` +
+      `${pendientes} pendientes de agenda, ${aplicados} cambios de operaciones en el historial`,
   );
 }
 
