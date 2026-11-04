@@ -2,9 +2,30 @@
 
 import { z, ZodError } from "zod";
 import { VentaNoEncontradaError } from "@/servicios/agendar";
+import {
+  CitaNoEncontradaError,
+  CuadrillaFueraDeCiudadError,
+  CuadrillaNoEncontradaError,
+  FranjaNoDisponibleError,
+} from "@/servicios/administrar";
 
 // Mensajes de validación en español.
 z.config(z.locales.es());
+
+// Errores de los servicios y su traducción a HTTP.
+const ERRORES_DE_DOMINIO: [new (...args: never[]) => Error, number, string][] = [
+  [VentaNoEncontradaError, 404, "VENTA_NO_ENCONTRADA"],
+  [CitaNoEncontradaError, 404, "CITA_NO_ENCONTRADA"],
+  [CuadrillaNoEncontradaError, 404, "CUADRILLA_NO_ENCONTRADA"],
+  [CuadrillaFueraDeCiudadError, 422, "CUADRILLA_FUERA_DE_CIUDAD"],
+  [FranjaNoDisponibleError, 409, "FRANJA_NO_DISPONIBLE"],
+];
+
+// Quién hace un cambio administrativo y por qué (queda en el historial).
+export const esquemaResponsable = z.object({
+  actor: z.string().trim().min(2).max(80),
+  motivo: z.string().trim().max(280).optional(),
+});
 
 export class ErrorApi extends Error {
   constructor(
@@ -34,8 +55,10 @@ export function conManejoDeErrores<A extends unknown[]>(handler: (...args: A) =>
       if (error instanceof ZodError) {
         return respuestaError(400, "ENTRADA_INVALIDA", "La solicitud no es válida", z.flattenError(error));
       }
-      if (error instanceof VentaNoEncontradaError) {
-        return respuestaError(404, "VENTA_NO_ENCONTRADA", error.message);
+      const conocido = ERRORES_DE_DOMINIO.find(([clase]) => error instanceof clase);
+      if (conocido && error instanceof Error) {
+        const [, status, codigo] = conocido;
+        return respuestaError(status, codigo, error.message);
       }
       console.error(error);
       return respuestaError(500, "ERROR_INTERNO", "Error inesperado");
