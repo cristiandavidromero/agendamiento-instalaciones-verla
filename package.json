@@ -14,7 +14,8 @@
     "db:seed": "prisma db seed",
     "test:unit": "vitest run --project unit",
     "test:int": "vitest run --project integration",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "demo:concurrencia": "tsx scripts/demo-concurrencia.ts"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
