@@ -65,12 +65,17 @@ async function disputarElMismoCupo(ventaIds: number[], bloquearCuadrilla: boolea
   for (const { candidatas } of busquedas) {
     expect(candidatas.map((c) => c.inicio)).toEqual([bogota("2026-11-04 08:00")]);
   }
-  return Promise.all(
+  return Promise.allSettled(
     busquedas.map(({ venta, candidatas }) =>
       reservarPrimeraDisponible(venta.id, candidatas, { bloquearCuadrilla }),
     ),
   );
 }
+
+const cumplidas = (resultados: PromiseSettledResult<ResultadoAgenda>[]) =>
+  resultados.flatMap((r) => (r.status === "fulfilled" ? [r.value] : []));
+const fallidas = (resultados: PromiseSettledResult<ResultadoAgenda>[]) =>
+  resultados.flatMap((r) => (r.status === "rejected" ? [r.reason] : []));
 
 describe(`concurrencia: ${VENTAS} ventas simultáneas`, () => {
   beforeEach(limpiarBD);
@@ -79,7 +84,9 @@ describe(`concurrencia: ${VENTAS} ventas simultáneas`, () => {
   it("por el mismo cupo: solo 1 lo obtiene", async () => {
     const { ventas, cuadrillas } = await escenarioUnCupo();
 
-    const resultados = await disputarElMismoCupo(ventas.map((v) => v.id), true);
+    const disputa = await disputarElMismoCupo(ventas.map((v) => v.id), true);
+    expect(fallidas(disputa)).toEqual([]);
+    const resultados = cumplidas(disputa);
 
     expect(contar(resultados, "AGENDADA")).toBe(1);
     expect(contar(resultados, "SIN_CUPO")).toBe(VENTAS - 1);
@@ -106,15 +113,28 @@ describe(`concurrencia: ${VENTAS} ventas simultáneas`, () => {
     expect(await citasCruzadas()).toBe(0);
   });
 
+  // Sin el bloqueo, las inserciones se esperan entre sí en la restricción de exclusión y
+  // PostgreSQL resuelve los deadlocks de uno en uno (deadlock_timeout = 1 s): a veces alguna
+  // transacción supera su timeout. Lo que la BD sí garantiza siempre es que no hay solapes.
   it("control sin FOR UPDATE: la restricción de la BD sigue impidiendo el solape", async () => {
     const { ventas } = await escenarioUnCupo();
 
-    const resultados = await disputarElMismoCupo(ventas.map((v) => v.id), false);
+    const disputa = await disputarElMismoCupo(ventas.map((v) => v.id), false);
+    const resultados = cumplidas(disputa);
 
-    expect(contar(resultados, "AGENDADA")).toBe(1);
-    expect(contar(resultados, "SIN_CUPO")).toBe(VENTAS - 1);
+    for (const error of fallidas(disputa)) {
+      expect(String(error)).toMatch(/expired transaction|Transaction already closed/);
+    }
+    expect(contar(resultados, "AGENDADA")).toBeLessThanOrEqual(1);
+    expect(await prisma.cita.count({ where: { inicio: bogota("2026-11-04 08:00") } })).toBe(
+      contar(resultados, "AGENDADA"),
+    );
     expect(await citasCruzadas()).toBe(0);
-    console.info(`[control sin FOR UPDATE] choques atrapados por cita_sin_solapamiento: ${totalChoques(resultados)}`);
+    console.info(
+      `[control sin FOR UPDATE] agendadas: ${contar(resultados, "AGENDADA")}, ` +
+        `choques atrapados por cita_sin_solapamiento: ${totalChoques(resultados)}, ` +
+        `transacciones vencidas: ${fallidas(disputa).length}`,
+    );
   });
 
   it("con varios cupos: todas se agendan sin cruces ni exceso de capacidad", async () => {
