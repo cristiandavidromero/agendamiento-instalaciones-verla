@@ -1,0 +1,89 @@
+# Integración continua: en cada push y pull request levanta PostgreSQL real, aplica las
+# migraciones (incluidas las SQL manuales: EXCLUDE, CHECK y trigger) y corre las tres suites.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verificar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: agenda
+          POSTGRES_PASSWORD: agenda
+          POSTGRES_DB: agenda
+          TZ: UTC
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U agenda -d agenda"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 30
+
+    env:
+      DATABASE_URL: postgresql://agenda:agenda@localhost:5433/agenda?schema=public
+      DATABASE_URL_TEST: postgresql://agenda:agenda@localhost:5433/agenda_test?schema=public&connection_limit=30
+      PGPASSWORD: agenda
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Crear la BD de pruebas
+        run: psql -h localhost -p 5433 -U agenda -d agenda -c "CREATE DATABASE agenda_test"
+
+      - name: Generar cliente de Prisma
+        run: npx prisma generate
+
+      - name: Typecheck y lint
+        run: |
+          npm run typecheck
+          npm run lint
+
+      - name: Pruebas unitarias
+        run: npm run test:unit
+
+      - name: Migraciones y seed en la BD de desarrollo
+        run: |
+          npx prisma migrate deploy
+          npm run db:seed
+
+      - name: Pruebas de integración (incluye concurrencia)
+        run: npm run test:int
+
+      - name: Instalar Chromium para Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Pruebas E2E
+        run: npm run test:e2e
+
+      - name: Build de producción
+        run: npm run build
+
+      - name: Guardar reporte de Playwright si falla
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: test-results/
+          retention-days: 7
