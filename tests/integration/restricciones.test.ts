@@ -101,4 +101,46 @@ describe("restricciones de la BD", () => {
     await expect(bloque(1, 480, 1500)).rejects.toThrow(/disponibilidad_rango_valido/);
     await expect(bloque(1, 480, 1020)).resolves.toBeDefined();
   });
+
+  describe("cuadrilla_max_instaladores", () => {
+    it("acepta un segundo instalador", async () => {
+      const { cuadrillas } = await crearEscenario();
+
+      await expect(
+        prisma.instalador.create({ data: { nombre: "Segundo", cuadrillaId: cuadrillas[0].id } }),
+      ).resolves.toBeDefined();
+    });
+
+    it("rechaza un tercer instalador", async () => {
+      const { cuadrillas } = await crearEscenario();
+      await prisma.instalador.create({ data: { nombre: "Segundo", cuadrillaId: cuadrillas[0].id } });
+
+      await expect(
+        prisma.instalador.create({ data: { nombre: "Tercero", cuadrillaId: cuadrillas[0].id } }),
+      ).rejects.toThrow(/cuadrilla_max_instaladores/);
+    });
+
+    it("rechaza mover un instalador a una cuadrilla completa", async () => {
+      const { cuadrillas } = await crearEscenario({ cuadrillas: 2 });
+      await prisma.instalador.create({ data: { nombre: "Segundo", cuadrillaId: cuadrillas[0].id } });
+      const delOtra = await prisma.instalador.findFirstOrThrow({
+        where: { cuadrillaId: cuadrillas[1].id },
+      });
+
+      await expect(
+        prisma.instalador.update({ where: { id: delOtra.id }, data: { cuadrillaId: cuadrillas[0].id } }),
+      ).rejects.toThrow(/cuadrilla_max_instaladores/);
+    });
+
+    it("dos altas concurrentes no superan el límite", async () => {
+      const { cuadrillas } = await crearEscenario();
+      const alta = (nombre: string) =>
+        prisma.instalador.create({ data: { nombre, cuadrillaId: cuadrillas[0].id } });
+
+      const resultados = await Promise.allSettled([alta("B"), alta("C"), alta("D")]);
+
+      expect(resultados.filter((r) => r.status === "fulfilled")).toHaveLength(1);
+      expect(await prisma.instalador.count({ where: { cuadrillaId: cuadrillas[0].id } })).toBe(2);
+    });
+  });
 });
