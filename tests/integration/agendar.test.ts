@@ -1,8 +1,10 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   agendarVenta,
   buscarCandidatas,
+  esBloqueoMutuo,
   esChoqueDeCita,
   reservarPrimeraDisponible,
   VentaNoEncontradaError,
@@ -152,5 +154,19 @@ describe("esChoqueDeCita", () => {
 
     expect(esChoqueDeCita(choque)).toBe(true);
     expect(esChoqueDeCita(otro)).toBe(false);
+  });
+});
+
+describe("esBloqueoMutuo", () => {
+  it("reconoce el deadlock de PostgreSQL y el código P2034 de Prisma", () => {
+    const deadlock = new Error('PostgresError { code: "40P01", message: "deadlock detected" }');
+    const p2034 = new Prisma.PrismaClientKnownRequestError("write conflict or deadlock", {
+      code: "P2034",
+      clientVersion: Prisma.prismaVersion.client,
+    });
+
+    expect(esBloqueoMutuo(deadlock)).toBe(true);
+    expect(esBloqueoMutuo(p2034)).toBe(true);
+    expect(esBloqueoMutuo(new Error("cita_sin_solapamiento"))).toBe(false);
   });
 });
