@@ -13,7 +13,7 @@ cp .env.example .env
 npm install
 npm run db:up          # PostgreSQL en localhost:5433 (crea también la BD agenda_test)
 npm run db:migrate     # aplica las migraciones a la BD de desarrollo
-npm run db:seed        # 2 ciudades, 3 contratistas, 5 cuadrillas, 3 tipos de servicio
+npm run db:seed        # catálogo + 40 ventas simuladas agendadas desde ahora y cambios de operaciones
 npm run dev            # http://localhost:3000
 ```
 
@@ -125,6 +125,51 @@ Otro caso de la suite agenda 20 ventas sobre 3 cuadrillas y verifica 0 cruces y 
 `GET /api/ventas/:id` incluye además el historial de la venta.
 
 Los errores siguen el formato `{ "error": { "codigo", "mensaje", "detalles?" } }`.
+
+## Datos de prueba simulados
+
+`npm run db:seed` reinicia la BD de desarrollo y carga:
+
+- **Catálogo:** Bogotá y Medellín, 3 contratistas (uno atiende ambas ciudades), 5 cuadrillas con 1 o 2 instaladores, jornada de lunes a viernes con almuerzo, algunas con sábado en la mañana, y 3 tipos de servicio de 60, 90 y 120 min.
+- **Operación:** 40 ventas (60 % en Bogotá) cerradas desde la hora actual. Pasan por el agendamiento real, así que llenan las cuadrillas respetando su capacidad.
+- **Cambios de operaciones:** 2 citas movidas, 1 reasignada y 2 liberadas, que quedan pendientes. Así la bandeja de administración y el historial tienen contenido.
+
+La mezcla de ciudades y servicios usa una semilla fija y siempre es la misma. Las horas dependen del momento en que se ejecuta.
+
+## Despliegue
+
+**Ambientes**
+
+| Ambiente | Base de datos | Uso |
+|---|---|---|
+| Desarrollo | `agenda` en docker-compose (puerto 5433) | `npm run dev` con datos simulados |
+| Pruebas | `agenda_test` (mismo contenedor) | Vitest, Playwright y la demo; se reinicia en cada corrida |
+| CI | PostgreSQL 16 como servicio de GitHub Actions | Ver abajo |
+| Staging / producción | PostgreSQL 16 administrado que permita la extensión `btree_gist` (RDS, Cloud SQL, Neon, Supabase…) | Next.js en Vercel o en un contenedor Node |
+
+**CI** — [`.github/workflows/ci.yml`](.github/workflows/ci.yml). En cada push y pull request:
+
+1. Levanta PostgreSQL y crea la BD de pruebas.
+2. Corre typecheck y lint.
+3. Corre las pruebas unitarias.
+4. Aplica las migraciones desde cero (`prisma migrate deploy`) y corre el seed.
+5. Corre las pruebas de integración y de concurrencia.
+6. Corre las pruebas E2E con Chromium.
+7. Hace el build de producción.
+
+Si algo falla, guarda el reporte de Playwright. La misma secuencia se reprodujo en local contra un PostgreSQL vacío y pasa completa.
+
+**Migraciones**
+
+- Viven versionadas en `prisma/migrations`, e incluyen SQL escrito a mano para lo que Prisma no modela: la restricción `EXCLUDE`, los `CHECK` y el trigger de instaladores.
+- En staging y producción se aplican con `prisma migrate deploy` como paso de release, antes de arrancar la nueva versión. Nunca se usa `migrate dev`, que puede reiniciar datos.
+- Las migraciones solo agregan; un cambio destructivo se hace en dos versiones (expandir y luego contraer).
+
+**Notas para producción**
+
+- La reserva usa transacciones interactivas con `SELECT ... FOR UPDATE`. Si se usa PgBouncer, debe ser en modo *transaction* o *session*, y el `connection_limit` de Prisma se ajusta al tamaño del pool.
+- Sin el `FOR UPDATE`, la latencia bajo contención se dispara (ver la prueba de concurrencia). Hay que mantenerlo en cualquier nueva ruta que cree o mueva citas.
+- Falta la autenticación: el responsable de los cambios administrativos debería salir de la sesión del usuario.
 
 ## Supuestos
 

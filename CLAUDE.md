@@ -13,7 +13,7 @@ Prueba técnica: **agendamiento automático de instalaciones**. Cuando se cierra
 ## Comandos
 
 - `npm run db:up` — PostgreSQL en `localhost:5433` (BD `agenda` y `agenda_test`).
-- `npm run db:migrate` / `npm run db:seed` — migraciones y datos de ejemplo en desarrollo.
+- `npm run db:migrate` / `npm run db:seed` — migraciones y datos simulados en desarrollo (el seed reinicia la BD y agenda 40 ventas desde la hora actual).
 - `npm run test:unit` · `npm run test:int` · `npm run test:e2e` — no correr `test:int`, `test:e2e` ni `demo:concurrencia` a la vez: todos reinician `agenda_test`.
 - `npm run typecheck` · `npm run lint` · `npm run build`.
 - `npm run demo:concurrencia` — 20 ventas simultáneas por el mismo cupo.
@@ -70,3 +70,4 @@ La prueba lanza **20 ventas simultáneas por el mismo cupo** y verifica que **so
 - **Commits pequeños** y enfocados, uno por cambio lógico.
 - **Pruebas para cada regla de negocio**: horizonte de 14 días, franjas de 30 min, solapamiento, duración que no cabe, capacidad diaria, desempate por menor carga, reintento ante choque y concurrencia.
 - La lógica del motor de disponibilidad debe ser pura y testeable sin BD; la reserva se prueba en integración con la BD.
+- CI en `.github/workflows/ci.yml`: replica los pasos localmente contra un Postgres vacío antes de cambiarlo.
