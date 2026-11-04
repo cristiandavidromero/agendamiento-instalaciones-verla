@@ -7,8 +7,23 @@ Prueba técnica: **agendamiento automático de instalaciones**. Cuando se cierra
 - **Next.js + TypeScript** (app y API)
 - **Prisma** como ORM
 - **PostgreSQL** levantado con `docker-compose`
-- **Vitest** para pruebas unitarias e de integración
+- **Vitest** para pruebas unitarias y de integración
 - **Playwright** para pruebas end-to-end
+
+## Comandos
+
+- `npm run db:up` — PostgreSQL en `localhost:5433` (BD `agenda` y `agenda_test`).
+- `npm run db:migrate` / `npm run db:seed` — migraciones y datos de ejemplo en desarrollo.
+- `npm run test:unit` · `npm run test:int` · `npm run test:e2e` — no correr `test:int`, `test:e2e` ni `demo:concurrencia` a la vez: todos reinician `agenda_test`.
+- `npm run typecheck` · `npm run lint` · `npm run build`.
+- `npm run demo:concurrencia` — 20 ventas simultáneas por el mismo cupo.
+
+## Notas de implementación
+
+- Versiones fijadas: Prisma 6.16 (no 7), Zod 4, Next 15. npm 12 bloquea scripts de instalación: los permitidos están en `allowScripts` de `package.json`.
+- La lógica del motor vive en `src/dominio/` (pura); la reserva en `src/servicios/agendar.ts`.
+- Restricciones que Prisma no modela (EXCLUDE, CHECK, trigger de instaladores) van en migraciones SQL manuales: crear con `prisma migrate dev --create-only` y editar el SQL.
+- Pruebas de integración: el reloj se inyecta con `{ ahora }` o con `vi.setSystemTime` (solo `Date`).
 
 ## Modelo de datos
 
