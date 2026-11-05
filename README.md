@@ -1,5 +1,20 @@
 # Agendamiento automático de instalaciones
 
+[![Desplegado en Vercel](https://img.shields.io/badge/Vercel-demo_en_l%C3%ADnea-000000?logo=vercel&logoColor=white)](https://agendamiento-instalaciones-verla.vercel.app/)
+
+> **Pruébalo en línea, sin instalar nada:** **https://agendamiento-instalaciones-verla.vercel.app/**
+>
+> Publicado en **Vercel** (frontend + API REST) con **PostgreSQL en Neon** y datos de prueba simulados.
+>
+> | Pantalla | Enlace |
+> |---|---|
+> | Cerrar venta | https://agendamiento-instalaciones-verla.vercel.app/ |
+> | Agenda por cuadrilla | https://agendamiento-instalaciones-verla.vercel.app/agenda |
+> | Administración (mover, reasignar, liberar) | https://agendamiento-instalaciones-verla.vercel.app/admin |
+> | API, por ejemplo una venta | https://agendamiento-instalaciones-verla.vercel.app/api/ventas/1 |
+>
+> En Administración escribe tu nombre en "Responsable del cambio" para habilitar los botones.
+
 Prueba técnica. Al cerrarse una venta, el sistema asigna automáticamente la **cuadrilla** y la **franja horaria más próxima** de los próximos 14 días, sin dobles reservas aunque muchas ventas se cierren al mismo tiempo.
 
 **Stack:** Next.js 15 (App Router) + TypeScript · Prisma 6 · PostgreSQL 16 (docker-compose) · Zod · Vitest · Playwright.
